@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 会員管理
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(MEMBER)
+  phone     String?
+  address   String?
+  birthDate DateTime?
+  joinDate  DateTime @default(now())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  participations EventParticipation[]
+  createdEvents  Event[]              @relation("EventCreator")
+  createdNews    News[]               @relation("NewsAuthor")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+// 大会・イベント管理
+model Event {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  eventType   EventType
+  startDate   DateTime
+  endDate     DateTime?
+  location    String
+  maxParticipants Int?
+  registrationDeadline DateTime?
+  fee         Int?        // 参加費（円）
+  status      EventStatus @default(DRAFT)
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // リレーション
+  createdBy      User                  @relation("EventCreator", fields: [createdById], references: [id])
+  participations EventParticipation[]
+
+  @@map("events")
+}
+
+enum EventType {
+  TOURNAMENT    // 大会
+  WORKSHOP      // ワークショップ
+  MEETING       // 会議
+  SOCIAL        // 懇親会
+  OTHER         // その他
+}
+
+enum EventStatus {
+  DRAFT         // 下書き
+  PUBLISHED     // 公開
+  REGISTRATION_OPEN   // 受付中
+  REGISTRATION_CLOSED // 受付終了
+  IN_PROGRESS   // 開催中
+  COMPLETED     // 終了
+  CANCELLED     // 中止
+}
+
+// 大会参加管理
+model EventParticipation {
+  id           String               @id @default(cuid())
+  userId       String
+  eventId      String
+  status       ParticipationStatus  @default(PENDING)
+  appliedAt    DateTime             @default(now())
+  approvedAt   DateTime?
+  notes        String?              // 備考
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  // リレーション
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("event_participations")
+}
+
+enum ParticipationStatus {
+  PENDING   // 申込中
+  APPROVED  // 承認済み
+  REJECTED  // 却下
+  CANCELLED // キャンセル
+}
+
+// ニュース管理
+model News {
+  id          String      @id @default(cuid())
+  title       String
+  content     String
+  summary     String?     // 要約
+  category    NewsCategory
+  status      NewsStatus  @default(DRAFT)
+  publishedAt DateTime?
+  authorId    String
+  viewCount   Int         @default(0)
+  isPinned    Boolean     @default(false) // 重要なお知らせ
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // リレーション
+  author User @relation("NewsAuthor", fields: [authorId], references: [id])
+
+  @@map("news")
+}
+
+enum NewsCategory {
+  ANNOUNCEMENT  // お知らせ
+  EVENT         // イベント情報
+  RESULT        // 結果報告
+  GENERAL       // 一般
+  URGENT        // 緊急
+}
+
+enum NewsStatus {
+  DRAFT     // 下書き
+  PUBLISHED // 公開
+  ARCHIVED  // アーカイブ
+}
+
+// 設定管理
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+} 

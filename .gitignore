@@ -1,0 +1,376 @@
+# =============================================================================
+# インフラ構成比較プロジェクト用 .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# IDE・エディタ関連
+# -----------------------------------------------------------------------------
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# 環境変数・機密情報
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# AWS認証情報
+.aws/
+aws-credentials.json
+
+# SSH鍵
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# SSL証明書
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# -----------------------------------------------------------------------------
+# Node.js関連
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next/
+out/
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# データベース関連
+# -----------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# PostgreSQL
+*.dump
+*.sql
+
+# MongoDB
+*.bson
+
+# -----------------------------------------------------------------------------
+# Docker関連
+# -----------------------------------------------------------------------------
+# Docker Compose override files
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Docker volumes (ローカル開発用)
+postgres_data/
+strapi_uploads/
+strapi_data/
+
+# Docker build cache
+.dockerignore.bak
+
+# -----------------------------------------------------------------------------
+# Terraform関連
+# -----------------------------------------------------------------------------
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform variable files
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Terraform plan files
+*.tfplan
+
+# Terraform CLI configuration files
+.terraformrc
+terraform.rc
+
+# Terraform lock files (プロジェクトによっては含める場合もある)
+.terraform.lock.hcl
+
+# Terraform directories
+.terraform/
+
+# -----------------------------------------------------------------------------
+# AWS関連
+# -----------------------------------------------------------------------------
+# AWS SAM
+.aws-sam/
+
+# AWS CDK
+cdk.out/
+*.d.ts
+
+# -----------------------------------------------------------------------------
+# ログファイル
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Nginx logs
+access.log
+error.log
+
+# Application logs
+app.log
+application.log
+
+# -----------------------------------------------------------------------------
+# OS関連
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# -----------------------------------------------------------------------------
+# バックアップ・一時ファイル
+# -----------------------------------------------------------------------------
+*.bak
+*.backup
+*.tmp
+*.temp
+*.old
+*.orig
+*.rej
+*.swp
+*.swo
+
+# -----------------------------------------------------------------------------
+# 圧縮ファイル
+# -----------------------------------------------------------------------------
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# -----------------------------------------------------------------------------
+# プロジェクト固有
+# -----------------------------------------------------------------------------
+# 本番用設定ファイル（テンプレートは含める）
+infrastructure/vps/.env.production
+infrastructure/aws/.env.production
+infrastructure/free-tier/.env.production
+
+# 監視・メトリクスデータ
+monitoring/
+metrics/
+
+# テストデータ
+test-data/
+sample-data/
+
+# ドキュメント生成ファイル
+docs/generated/
+
+# パフォーマンステスト結果
+performance-results/
+load-test-results/
+
+# -----------------------------------------------------------------------------
+# 開発用ファイル
+# -----------------------------------------------------------------------------
+# 開発用スクリプト
+dev-scripts/
+local-scripts/
+
+# 実験用ファイル
+experiments/
+playground/
+
+# メモ・ノート
+notes.md
+TODO.md
+NOTES.txt
+
+# -----------------------------------------------------------------------------
+# セキュリティ関連
+# -----------------------------------------------------------------------------
+# 認証トークン
+*.token
+auth-tokens.json
+
+# API キー
+api-keys.json
+secrets.json
+
+# パスワードファイル
+passwords.txt
+.htpasswd
+
+# -----------------------------------------------------------------------------
+# 依存関係・パッケージ管理
+# -----------------------------------------------------------------------------
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# pnpm
+.pnpm-store/
+
+# -----------------------------------------------------------------------------
+# 除外しないファイル（明示的に含める）
+# -----------------------------------------------------------------------------
+# 設定ファイルのテンプレート
+!.env.example
+!.env.template
+
+# Docker設定
+!Dockerfile*
+!docker-compose*.yml
+
+# Terraform設定
+!*.tf
+!*.tfvars.example
+
+# ドキュメント
+!README.md
+!docs/
+!*.md
+
+# 設定ファイル
+!package.json
+!tsconfig.json
+!next.config.*
+!tailwind.config.* 

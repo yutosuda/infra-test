@@ -1,0 +1,42 @@
+# VPS環境用 Next.js Dockerfile
+# マルチステージビルドでプロダクション最適化
+
+# ビルドステージ
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 依存関係のインストール
+COPY package*.json ./
+RUN npm ci
+
+# アプリケーションのビルド
+COPY . .
+RUN npm run build
+
+# プロダクションステージ
+FROM node:18-alpine AS runner
+
+# セキュリティ: 非rootユーザーでの実行
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+# 必要なファイルのみをコピー
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 非rootユーザーに切り替え
+USER nextjs
+
+# ポートの公開
+EXPOSE 3000
+
+# 環境変数
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+# アプリケーションの起動
+CMD ["node", "server.js"] 

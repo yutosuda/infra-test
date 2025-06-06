@@ -1,0 +1,53 @@
+# 比較ダッシュボード用 Dockerfile
+FROM node:18-alpine AS builder
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# 依存関係ファイルをコピー
+COPY package*.json ./
+
+# 依存関係インストール
+RUN npm ci
+
+# アプリケーションコードをコピー
+COPY . .
+
+# 比較ダッシュボード用の環境変数設定
+ENV NEXT_PUBLIC_APP_MODE=demo
+ENV NEXT_PUBLIC_ENABLE_MONITORING=true
+
+# Next.js アプリケーションをビルド
+RUN npm run build
+
+# 本番用ランナー
+FROM node:18-alpine AS runner
+
+# セキュリティ用ユーザー作成
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# 作業ディレクトリ設定
+WORKDIR /app
+
+# 必要なファイルをコピー
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 比較ダッシュボード用の追加設定
+COPY --from=builder /app/package.json ./package.json
+
+# ユーザー切り替え
+USER nextjs
+
+# ポート公開
+EXPOSE 3001
+
+# 環境変数設定
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOSTNAME=0.0.0.0
+
+# アプリケーション起動
+CMD ["node", "server.js"] 

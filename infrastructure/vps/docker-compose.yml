@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: vps-postgres
+    environment:
+      POSTGRES_DB: strapi_db
+      POSTGRES_USER: strapi_user
+      POSTGRES_PASSWORD: strapi_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - vps-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strapi_user -d strapi_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Strapi アプリケーション
+  strapi:
+    build:
+      context: ../../strapi-app
+      dockerfile: ../infrastructure/vps/Dockerfile.strapi
+    container_name: vps-strapi
+    environment:
+      NODE_ENV: production
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: strapi_db
+      DATABASE_USERNAME: strapi_user
+      DATABASE_PASSWORD: strapi_password
+      DATABASE_SSL: false
+      JWT_SECRET: your-jwt-secret-key-change-this-in-production
+      ADMIN_JWT_SECRET: your-admin-jwt-secret-change-this-in-production
+      APP_KEYS: key1,key2,key3,key4
+      API_TOKEN_SALT: your-api-token-salt
+      TRANSFER_TOKEN_SALT: your-transfer-token-salt
+    volumes:
+      - strapi_uploads:/opt/app/public/uploads
+      - strapi_data:/opt/app/.tmp
+    ports:
+      - "1337:1337"
+    networks:
+      - vps-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1337/admin"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Webアプリケーション
+  webapp:
+    build:
+      context: ../../web-app
+      dockerfile: ../infrastructure/vps/Dockerfile.webapp
+    container_name: vps-webapp
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_STRAPI_URL: http://localhost/api
+    ports:
+      - "3000:3000"
+    networks:
+      - vps-network
+    depends_on:
+      strapi:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nginx リバースプロキシ（本格的なVPS環境をシミュレート）
+  nginx:
+    image: nginx:alpine
+    container_name: vps-nginx
+    volumes:
+      - ./nginx-simple.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - vps-network
+    depends_on:
+      - strapi
+      - webapp
+    restart: unless-stopped
+
+  # 監視用（VPSでの手動監視をシミュレート）
+  monitoring:
+    image: prom/node-exporter:latest
+    container_name: vps-monitoring
+    ports:
+      - "9100:9100"
+    networks:
+      - vps-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  strapi_uploads:
+    driver: local
+  strapi_data:
+    driver: local
+
+networks:
+  vps-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

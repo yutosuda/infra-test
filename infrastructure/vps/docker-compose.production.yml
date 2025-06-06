@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: prod-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-strapi_db}
+      POSTGRES_USER: ${POSTGRES_USER:-strapi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strapi_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "127.0.0.1:5432:5432"  # ローカルホストのみ
+    networks:
+      - prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-strapi_user} -d ${POSTGRES_DB:-strapi_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Strapi アプリケーション
+  strapi:
+    build:
+      context: ../../strapi-app
+      dockerfile: ../infrastructure/vps/Dockerfile.strapi
+    container_name: prod-strapi
+    environment:
+      NODE_ENV: production
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-strapi_db}
+      DATABASE_USERNAME: ${POSTGRES_USER:-strapi_user}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-strapi_password}
+      DATABASE_SSL: false
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      # 本番用設定
+      HOST: 0.0.0.0
+      PORT: 1337
+      PUBLIC_URL: https://${VPS_DOMAIN:-vps.your-domain.com}
+    volumes:
+      - strapi_uploads:/opt/app/public/uploads
+      - strapi_data:/opt/app/.tmp
+    ports:
+      - "127.0.0.1:1337:1337"  # ローカルホストのみ
+    networks:
+      - prod-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1337/admin"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Webアプリケーション
+  webapp:
+    build:
+      context: ../../web-app
+      dockerfile: ../infrastructure/vps/Dockerfile.webapp
+    container_name: prod-webapp
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_STRAPI_URL: https://${VPS_DOMAIN:-vps.your-domain.com}/api
+      # 本番用最適化
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"  # ローカルホストのみ
+    networks:
+      - prod-network
+    depends_on:
+      strapi:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 比較ダッシュボード用アプリ
+  demo-app:
+    build:
+      context: ../../web-app
+      dockerfile: ../infrastructure/vps/Dockerfile.demo
+    container_name: prod-demo
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_VPS_URL: https://${VPS_DOMAIN:-vps.your-domain.com}
+      NEXT_PUBLIC_AWS_URL: https://${AWS_DOMAIN:-aws.your-domain.com}
+      NEXT_PUBLIC_HYBRID_URL: https://${HYBRID_DOMAIN:-hybrid.your-domain.com}
+      PORT: 3001
+    ports:
+      - "127.0.0.1:3001:3001"  # ローカルホストのみ
+    networks:
+      - prod-network
+    restart: unless-stopped
+
+  # Nginx リバースプロキシ（本番用・SSL対応）
+  nginx:
+    image: nginx:alpine
+    container_name: prod-nginx
+    volumes:
+      - ./nginx-production.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./logs:/var/log/nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - prod-network
+    depends_on:
+      - strapi
+      - webapp
+      - demo-app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 監視・メトリクス収集
+  monitoring:
+    image: prom/node-exporter:latest
+    container_name: prod-monitoring
+    ports:
+      - "127.0.0.1:9100:9100"  # ローカルホストのみ
+    networks:
+      - prod-network
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # ログ管理
+  logrotate:
+    image: alpine:latest
+    container_name: prod-logrotate
+    volumes:
+      - ./logs:/var/log/nginx
+      - ./logrotate.conf:/etc/logrotate.conf:ro
+    command: >
+      sh -c "
+        while true; do
+          logrotate /etc/logrotate.conf
+          sleep 86400
+        done
+      "
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  strapi_uploads:
+    driver: local
+  strapi_data:
+    driver: local
+
+networks:
+  prod-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16 

@@ -1,0 +1,50 @@
+# VPS環境用 Strapi Dockerfile
+# 本格的なプロダクション環境をシミュレート
+
+FROM node:18-alpine
+
+# セキュリティ: 非rootユーザーでの実行
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S strapi -u 1001
+
+# 作業ディレクトリの設定
+WORKDIR /opt/app
+
+# システムの依存関係をインストール
+RUN apk add --no-cache \
+    curl \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
+
+# package.jsonとpackage-lock.jsonをコピー
+COPY --chown=strapi:nodejs package*.json ./
+
+# 依存関係のインストール（プロダクション用）
+RUN npm install --only=production && npm cache clean --force
+
+# アプリケーションコードをコピー
+COPY --chown=strapi:nodejs . .
+
+# Strapiのビルド
+RUN npm run build
+
+# ヘルスチェック用のスクリプト
+COPY --chown=strapi:nodejs <<EOF /opt/app/healthcheck.sh
+#!/bin/sh
+curl -f http://localhost:1337/_health || exit 1
+EOF
+
+RUN chmod +x /opt/app/healthcheck.sh
+
+# 非rootユーザーに切り替え
+USER strapi
+
+# ポートの公開
+EXPOSE 1337
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /opt/app/healthcheck.sh
+
+# アプリケーションの起動
+CMD ["npm", "start"] 
