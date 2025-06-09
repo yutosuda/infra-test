@@ -1,40 +1,32 @@
-# さくらVPS + ドメイン実装ガイド
+# VPS (vps-2025-06-09-11-08-03) + aruday1024.xvps.jp 実装ガイド
 
 ## 🎯 目標
 3つのインフラ構成を実際のVPS + ドメインで比較検証
 
-## 📋 必要なリソース
+## 📋 取得済みリソース
 
-### 1. さくらVPS
-- **推奨プラン**: 2GB以上 (複数構成の並行テスト用)
-- **OS**: Ubuntu 22.04 LTS
-- **料金**: 月額1,738円〜
+### 1. VPS サーバー
+- **サーバー名**: vps-2025-06-09-11-08-03
+- **スペック**: 2GBメモリ、仮想3コア、NVMe 50GB
+- **ホスト**: host02-5
+- **OS**: Ubuntu 25.04
+- **ステータス**: 稼働中
 
 ### 2. ドメイン
-- **推奨**: `.com` または `.jp`
-- **DNS管理**: CloudFlare (無料) または さくらのDNS
-- **料金**: 年額1,000円〜3,000円
+- **ドメイン**: aruday1024.xvps.jp
+- **プロバイダ**: XVPS
+- **タイプ**: 標準VPSドメイン
+- **DNS管理**: XVPS DNS
 
 ## 🚀 デプロイ手順
 
-### Step 1: VPS初期設定
+### Step 1: VPS初期設定（自動化済み）
 ```bash
 # VPS接続
-ssh root@your-vps-ip
+ssh root@[VPSのIPアドレス]
 
-# 基本パッケージ更新
-apt update && apt upgrade -y
-
-# Docker & Docker Compose インストール
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-apt install docker-compose-plugin -y
-
-# ファイアウォール設定
-ufw allow 22    # SSH
-ufw allow 80    # HTTP
-ufw allow 443   # HTTPS
-ufw enable
+# 初期化スクリプト実行
+curl -fsSL https://raw.githubusercontent.com/your-repo/main/infrastructure/vps/init-scripts/vps-setup.sh | bash
 ```
 
 ### Step 2: プロジェクトデプロイ
@@ -43,35 +35,33 @@ ufw enable
 git clone <your-repo> /opt/infra-test
 cd /opt/infra-test/infrastructure/vps
 
-# 本番用環境変数設定
-cp .env.example .env.production
-# ドメイン、SSL設定を編集
+# 環境変数ファイル作成
+cp .env.production.template .env.production
+vim .env.production  # 実際の値に編集
 
-# Docker構成起動
-docker-compose -f docker-compose.production.yml up -d
+# デプロイスクリプト実行
+./init-scripts/deploy.sh
 ```
 
-### Step 3: SSL証明書 + ドメイン設定
-```bash
-# Certbot インストール
-apt install certbot python3-certbot-nginx -y
+### Step 3: DNS設定
+詳細は `DNS-SETUP-GUIDE.md` を参照してください。
 
-# SSL証明書取得
-certbot --nginx -d vps.your-domain.com
-
-# 自動更新設定
-crontab -e
-# 0 12 * * * /usr/bin/certbot renew --quiet
+#### 必要なDNS設定
+```
+@                       A       [VPSのIPアドレス]
+demo                    A       [VPSのIPアドレス]
+aws                     A       [VPSのIPアドレス]
+hybrid                  A       [VPSのIPアドレス]
 ```
 
 ## 🌐 サブドメイン構成
 
-### DNS設定 (CloudFlare推奨)
+### DNS設定 (XVPS / CloudFlare)
 ```
-A    vps.your-domain.com      → VPS IP
-A    aws.your-domain.com      → AWS ALB IP
-CNAME hybrid.your-domain.com  → vercel-app.vercel.app
-A    demo.your-domain.com     → VPS IP (比較ダッシュボード)
+A    aruday1024.xvps.jp           → VPS IP
+A    demo.aruday1024.xvps.jp      → VPS IP (比較ダッシュボード)
+A    aws.aruday1024.xvps.jp       → AWS ALB IP (将来用)
+CNAME hybrid.aruday1024.xvps.jp   → vercel-app.vercel.app (将来用)
 ```
 
 ### Nginx設定 (マルチドメイン対応)
@@ -112,23 +102,23 @@ server {
 
 ## 📊 構成比較の実装
 
-### 1. VPS構成 (vps.your-domain.com)
-- **現在の実装**: そのまま利用
+### 1. VPS構成 (aruday1024.xvps.jp)
+- **現在の実装**: Docker Compose + Nginx + Let's Encrypt
 - **特徴**: 完全自己管理、低コスト
 - **監視**: Docker stats, システムリソース
 
-### 2. AWS構成 (aws.your-domain.com)
+### 2. AWS構成 (aws.aruday1024.xvps.jp)
 - **実装**: Terraform + ECS Fargate
 - **特徴**: スケーラブル、マネージド
 - **監視**: CloudWatch, X-Ray
 
-### 3. ハイブリッド構成 (hybrid.your-domain.com)
+### 3. ハイブリッド構成 (hybrid.aruday1024.xvps.jp)
 - **フロント**: Vercel
 - **バックエンド**: AWS ECS (Strapi)
 - **DB**: Supabase
 - **特徴**: 最適化された組み合わせ
 
-### 4. 比較ダッシュボード (demo.your-domain.com)
+### 4. 比較ダッシュボード (demo.aruday1024.xvps.jp)
 - **リアルタイム監視**: 各構成のパフォーマンス
 - **コスト比較**: 月額料金シミュレーション
 - **レスポンス時間**: 実測値比較
@@ -136,9 +126,9 @@ server {
 ## 💰 コスト見積もり
 
 ### 初期費用
-- さくらVPS (2GB): 月額1,738円
+- X Server VPS (スタンダード): 月額料金
 - ドメイン (.com): 年額1,500円
-- **合計**: 月額約2,000円
+- **合計**: 月額約2,000円〜
 
 ### AWS追加費用 (テスト用)
 - ECS Fargate: 月額3,000円〜
